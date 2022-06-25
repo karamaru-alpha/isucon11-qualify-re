@@ -1,14 +1,16 @@
 APP_PATH=/home/isucon/webapp
-GO_PATH=/home/isucon/webapp/golang
+GO_PATH=/home/isucon/webapp/go
 
 APP:=isucondition
 DB_HOST:=127.0.0.1
 DB_PORT:=3306
 DB_USER:=isucon
 DB_PASS:=isucon
-DB_NAME:=isucon
+DB_NAME:=isucondition
 MYSQL_LOG:=/var/log/mysql/slow-query.log
+MYSQL_ERR:=/var/log/mysql/error.log
 NGINX_LOG:=/var/log/nginx/access.log
+NGINX_ERR:=/var/log/nginx/error.log
 GO_LOG:=/var/log/go.log
 
 .PHONY: setup
@@ -49,19 +51,18 @@ before:
 	git checkout . && git clean -df .
 	git rev-parse --abbrev-ref HEAD | xargs echo "BRANCH:"
 	git rev-parse --abbrev-ref HEAD | xargs git pull origin
-#	sudo cp my.cnf /etc/mysql/my.cnf
-#	sudo cp nginx.conf /etc/nginx/nginx.conf
-#	sudo cp $(APP).conf /etc/nginx/sites-enabled/$(APP).conf
-#	(cd go && $(GO_PATH) mod tidy)
-#	(cd go && $(GO_PATH) build -o $(APP))
-#	sudo cp /dev/null $(MYSQL_LOG)
-#	sudo cp /dev/null $(MYSQL_ERR)
-#	sudo cp /dev/null $(NGINX_LOG)
-#	sudo cp /dev/null $(NGINX_ERR)
-#	sudo cp /dev/null $(GO_LOG)
-#	sudo systemctl restart nginx
-#	sudo systemctl restart mysql
-#	sudo systemctl restart $(APP).go.service
+	sudo cp my.cnf /etc/mysql/my.cnf
+	sudo cp nginx.conf /etc/nginx/nginx.conf
+	sudo cp $(APP).conf /etc/nginx/sites-enabled/$(APP).conf
+	(cd $(GO_PATH) && go build -o $(APP))
+	sudo rm -f $(NGINX_LOG)
+	sudo rm -f $(NGINX_ERR)
+	sudo rm -f $(MYSQL_LOG)
+	sudo rm -f $(MYSQL_ERR)
+	sudo rm -f $(GO_LOG)
+	sudo systemctl restart nginx
+	sudo systemctl restart mysql
+	sudo systemctl restart $(APP).go.service
 
 .PHONY: before-db
 before-db:
@@ -96,3 +97,7 @@ fetch:
 sql:
 	mysql -h$(DB_HOST) -P$(DB_PORT) -u$(DB_USER) -p$(DB_PASS) $(DB_NAME)
 	# docker-compose exec mysql bash -c 'mysql -uisucon -pisucon isucari'
+
+.PHONY: bench
+bench:
+ (cd bench && ./bench -all-addresses 127.0.0.11 -target 127.0.0.11:443 -tls -jia-service-url http://127.0.0.1:4999)
