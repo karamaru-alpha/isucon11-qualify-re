@@ -97,3 +97,7 @@ fetch:
 sql:
 	mysql -h$(DB_HOST) -P$(DB_PORT) -u$(DB_USER) -p$(DB_PASS) $(DB_NAME)
 	# docker-compose exec mysql bash -c 'mysql -uisucon -pisucon isucari'
+
+.PHONY: bench
+bench:
+ (cd bench && ./bench -all-addresses 127.0.0.11 -target 127.0.0.11:443 -tls -jia-service-url http://127.0.0.1:4999)
