@@ -54,8 +54,8 @@ before:
 	sudo cp my.cnf /etc/mysql/my.cnf
 	sudo cp nginx.conf /etc/nginx/nginx.conf
 	sudo cp $(APP).conf /etc/nginx/sites-enabled/$(APP).conf
-	(cd go && $(GO_PATH) mod tidy)
-	(cd go && $(GO_PATH) build -o $(APP))
+	(cd go && sudo $(GO_PATH) mod tidy)
+	(cd go && sudo $(GO_PATH) build -o $(APP))
 	sudo rm -f $(NGINX_LOG)
 	sudo rm -f $(NGINX_ERR)
 	sudo rm -f $(MYSQL_LOG)
