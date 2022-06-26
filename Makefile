@@ -59,7 +59,7 @@ before:
 	sudo rm -f $(NGINX_ERR)
 	sudo rm -f $(MYSQL_LOG)
 	sudo rm -f $(MYSQL_ERR)
-	sudo rm -f $(GO_LOG)
+	cp /dev/null 2> $(GO_LOG)
 	sudo systemctl restart nginx
 	sudo systemctl restart mysql
 	sudo systemctl restart $(APP).go.service
