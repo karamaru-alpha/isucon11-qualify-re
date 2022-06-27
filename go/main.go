@@ -289,7 +289,7 @@ func main() {
 	}
 
 	omIsuConditionList.V = []*IsuCondition{}
-	
+
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
 }
@@ -1269,7 +1269,7 @@ func postIsuCondition(c echo.Context) error {
 }
 
 func loopPostIsuCondition() {
-	for range time.Tick(time.Second / 2) {
+	for range time.Tick(time.Millisecond * 500) {
 		isuConditions := omIsuConditionList.Get()
 		if len(isuConditions) == 0 {
 			continue
