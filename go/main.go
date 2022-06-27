@@ -289,6 +289,7 @@ func main() {
 	}
 
 	omIsuConditionList.V = []*IsuCondition{}
+	go loopPostIsuCondition()
 
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
