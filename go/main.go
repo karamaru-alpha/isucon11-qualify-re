@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -29,6 +30,27 @@ import (
 )
 
 var group singleflight.Group
+
+type omIsuConditionListT struct {
+	M sync.Mutex
+	V []*IsuCondition
+}
+
+var omIsuConditionList omIsuConditionListT
+
+func (o *omIsuConditionListT) Get() []*IsuCondition {
+	o.M.Lock()
+	v := o.V
+	o.V = []*IsuCondition{}
+	defer o.M.Unlock()
+	return v
+}
+
+func (o *omIsuConditionListT) Set(v []*IsuCondition) {
+	o.M.Lock()
+	o.V = append(o.V, v...)
+	o.M.Unlock()
+}
 
 const (
 	sessionName                 = "isucondition_go"
@@ -266,6 +288,8 @@ func main() {
 		return
 	}
 
+	omIsuConditionList.V = []*IsuCondition{}
+	
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
 }
@@ -1217,6 +1241,8 @@ func postIsuCondition(c echo.Context) error {
 		//}
 	}
 
+	omIsuConditionList.Set(isuConditions)
+
 	args := make([]interface{}, 0, len(isuConditions)*5)
 	placeHolders := &strings.Builder{}
 	for i, v := range isuConditions {
@@ -1240,6 +1266,29 @@ func postIsuCondition(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusAccepted)
+}
+
+func loopPostIsuCondition() {
+	for range time.Tick(time.Second / 2) {
+		isuConditions := omIsuConditionList.Get()
+		if len(isuConditions) == 0 {
+			continue
+		}
+		args := make([]interface{}, 0, len(isuConditions)*5)
+		placeHolders := &strings.Builder{}
+		for i, v := range isuConditions {
+			args = append(args, v.JIAIsuUUID, v.Timestamp, v.IsSitting, v.Condition, v.Message)
+			if i == 0 {
+				placeHolders.WriteString(" (?, ?, ?, ?, ?)")
+			} else {
+				placeHolders.WriteString(",(?, ?, ?, ?, ?)")
+			}
+		}
+		_, err := db.Exec("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES"+placeHolders.String(), args...)
+		if err != nil {
+			log.Println(err)
+		}
+	}
 }
 
 // ISUのコンディションの文字列がcsv形式になっているか検証
