@@ -1243,22 +1243,22 @@ func postIsuCondition(c echo.Context) error {
 	}
 
 	omIsuConditionList.Set(isuConditions)
-
-	args := make([]interface{}, 0, len(isuConditions)*5)
-	placeHolders := &strings.Builder{}
-	for i, v := range isuConditions {
-		args = append(args, v.JIAIsuUUID, v.Timestamp, v.IsSitting, v.Condition, v.Message)
-		if i == 0 {
-			placeHolders.WriteString(" (?, ?, ?, ?, ?)")
-		} else {
-			placeHolders.WriteString(",(?, ?, ?, ?, ?)")
-		}
-	}
-	_, err = db.Exec("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES"+placeHolders.String(), args...)
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+	//
+	//args := make([]interface{}, 0, len(isuConditions)*5)
+	//placeHolders := &strings.Builder{}
+	//for i, v := range isuConditions {
+	//	args = append(args, v.JIAIsuUUID, v.Timestamp, v.IsSitting, v.Condition, v.Message)
+	//	if i == 0 {
+	//		placeHolders.WriteString(" (?, ?, ?, ?, ?)")
+	//	} else {
+	//		placeHolders.WriteString(",(?, ?, ?, ?, ?)")
+	//	}
+	//}
+	//_, err = db.Exec("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES"+placeHolders.String(), args...)
+	//if err != nil {
+	//	c.Logger().Errorf("db error: %v", err)
+	//	return c.NoContent(http.StatusInternalServerError)
+	//}
 
 	err = tx.Commit()
 	if err != nil {
