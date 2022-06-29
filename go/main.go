@@ -1029,17 +1029,16 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? AND `timestamp` < ? AND `level` IN (?) ORDER BY `timestamp` DESC LIMIT ?",
 			jiaIsuUUID, endTime, levels, limit,
 		)
-		err = db.Select(&conditions, query, params...)
 	} else {
-		err = db.Select(&conditions,
-			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
-				"	AND `timestamp` < ?"+
-				"	AND ? <= `timestamp`"+
-				"	ORDER BY `timestamp` DESC",
-			jiaIsuUUID, endTime, startTime,
+		query, params, err = sqlx.In(
+			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? AND `timestamp` < ? AND ? <= `timestamp` AND `level` IN (?) ORDER BY `timestamp` DESC LIMIT ?",
+			jiaIsuUUID, endTime, startTime, levels, limit,
 		)
 	}
 	if err != nil {
+		return nil, fmt.Errorf("db error: %v", err)
+	}
+	if err := db.Select(&conditions, db.Rebind(query), params...); err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
 
