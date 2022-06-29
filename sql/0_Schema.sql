@@ -48,5 +48,5 @@ CREATE TABLE `latest_isu_condition` (
 PRIMARY KEY(`jia_isu_uuid`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
-CREATE TRIGGER latest_isu_condition_tr BEFORE INSERT ON `isu_condition` FOR EACH ROW INSERT INTO `latest_isu_condition` VALUES (NEW.jia_isu_uuid, NEW.timestamp, NEW.is_sitting, NEW.message, NEW.created_at)
+CREATE TRIGGER latest_isu_condition_tr BEFORE INSERT ON `isu_condition` FOR EACH ROW INSERT INTO `latest_isu_condition` VALUES (NEW.jia_isu_uuid, NEW.timestamp, NEW.is_sitting, NEW.condition, NEW.message, NEW.created_at)
 ON DUPLICATE KEY UPDATE latest_isu_condition.timestamp = NEW.timestamp, latest_isu_condition.is_sitting = NEW.is_sitting, latest_isu_condition.condition = NEW.condition, latest_isu_condition.message = NEW.message, latest_isu_condition.created_at = NEW.created_at;
