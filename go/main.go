@@ -114,6 +114,7 @@ type IsuCondition struct {
 	Condition  string    `db:"condition"`
 	Message    string    `db:"message"`
 	CreatedAt  time.Time `db:"created_at"`
+	Level      string    `db:"level"`
 }
 
 type MySQLConnectionEnv struct {
@@ -1219,8 +1220,14 @@ func postIsuCondition(c echo.Context) error {
 	for _, cond := range req {
 		timestamp := time.Unix(cond.Timestamp, 0)
 
-		if !isValidConditionFormat(cond.Condition) {
-			return c.String(http.StatusBadRequest, "bad request body")
+		//if !isValidConditionFormat(cond.Condition) {
+		//	return c.String(http.StatusBadRequest, "bad request body")
+		//}
+
+		level, err := calculateConditionLevel(cond.Condition)
+		if err != nil {
+			c.Logger().Errorf("db error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
 		}
 
 		isuConditions = append(isuConditions, &IsuCondition{
@@ -1229,6 +1236,7 @@ func postIsuCondition(c echo.Context) error {
 			IsSitting:  cond.IsSitting,
 			Condition:  cond.Condition,
 			Message:    cond.Message,
+			Level:      level,
 		})
 		//
 		//_, err = tx.Exec(
@@ -1275,17 +1283,17 @@ func loopPostIsuCondition() {
 		if len(isuConditions) == 0 {
 			continue
 		}
-		args := make([]interface{}, 0, len(isuConditions)*5)
+		args := make([]interface{}, 0, len(isuConditions)*6)
 		placeHolders := &strings.Builder{}
 		for i, v := range isuConditions {
-			args = append(args, v.JIAIsuUUID, v.Timestamp, v.IsSitting, v.Condition, v.Message)
+			args = append(args, v.JIAIsuUUID, v.Timestamp, v.IsSitting, v.Condition, v.Message, v.Level)
 			if i == 0 {
-				placeHolders.WriteString(" (?, ?, ?, ?, ?)")
+				placeHolders.WriteString(" (?, ?, ?, ?, ?, ?)")
 			} else {
-				placeHolders.WriteString(",(?, ?, ?, ?, ?)")
+				placeHolders.WriteString(",(?, ?, ?, ?, ?, ?)")
 			}
 		}
-		_, err := db.Exec("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES"+placeHolders.String(), args...)
+		_, err := db.Exec("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `level`) VALUES"+placeHolders.String(), args...)
 		if err != nil {
 			log.Println(err)
 		}
