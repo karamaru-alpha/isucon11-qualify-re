@@ -1096,7 +1096,7 @@ func getTrend(c echo.Context) error {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
 				"SELECT * FROM `isu` WHERE `character` = ?",
-				character.Character,
+				character,
 			)
 			if err != nil {
 				c.Logger().Errorf("db error: %v", err)
@@ -1147,7 +1147,7 @@ func getTrend(c echo.Context) error {
 			})
 			res = append(res,
 				TrendResponse{
-					Character: character.Character,
+					Character: character,
 					Info:      characterInfoIsuConditions,
 					Warning:   characterWarningIsuConditions,
 					Critical:  characterCriticalIsuConditions,
