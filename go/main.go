@@ -1153,6 +1153,7 @@ func getTrend(c echo.Context) error {
 					Critical:  characterCriticalIsuConditions,
 				})
 		}
+		time.Sleep(time.Millisecond * 100)
 		return res, nil
 	})
 
