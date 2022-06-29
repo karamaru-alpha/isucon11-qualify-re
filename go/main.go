@@ -1212,9 +1212,9 @@ func postIsuCondition(c echo.Context) error {
 	for _, cond := range req {
 		timestamp := time.Unix(cond.Timestamp, 0)
 
-		//if !isValidConditionFormat(cond.Condition) {
-		//	return c.String(http.StatusBadRequest, "bad request body")
-		//}
+		if !isValidConditionFormat(cond.Condition) {
+			return c.String(http.StatusBadRequest, "bad request body")
+		}
 
 		level, err := calculateConditionLevel(cond.Condition)
 		if err != nil {
