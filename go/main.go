@@ -1083,15 +1083,15 @@ func calculateConditionLevel(condition string) (string, error) {
 func getTrend(c echo.Context) error {
 
 	v, err, _ := group.Do("trend", func() (interface{}, error) {
-		characterList := []Isu{}
-		err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
-		if err != nil {
-			c.Logger().Errorf("db error: %v", err)
-			return nil, err
+		characterList := []string{
+			"いじっぱり", "うっかりや", "おくびょう", "おだやか", "おっとり", "おとなしい",
+			"がんばりや", "きまぐれ", "さみしがり", "しんちょう", "すなお", "ずぶとい",
+			"せっかち", "てれや", "なまいき", "のうてんき", "のんき", "ひかえめ", "まじめ",
+			"むじゃき", "やんちゃ", "ゆうかん", "ようき", "れいせい", "わんぱく",
 		}
-
 		res := []TrendResponse{}
 
+		var err error
 		for _, character := range characterList {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
