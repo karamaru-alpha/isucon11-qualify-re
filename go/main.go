@@ -1131,7 +1131,7 @@ func getTrend(c echo.Context) error {
 		for _, character := range characterList {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
-				"SELECT a.*, b.level, b.timestamp FROM `isu` a LEFT JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
+				"SELECT a.*, b.level, b.timestamp FROM `isu` a JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
 				character,
 			)
 			if err != nil {
@@ -1324,7 +1324,7 @@ func bulkInsertLatestIsuLevels(isuConditions []*IsuCondition) {
 		})
 	}
 	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` (`jia_isu_uuid`, `timestamp`, `level`) VALUES (:jia_isu_uuid, :timestamp, :level) ON DUPLICATE KEY UPDATE `timestamp`=VALUES(`timestamp`),level=VALUES(level)", latestIsuLevels); err != nil {
-		panic(err)
+		log.Println(err)
 	}
 }
 
