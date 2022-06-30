@@ -394,12 +394,12 @@ func postInitialize(c echo.Context) error {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	db.Exec("DROP TRIGGER tr1")
-	if _, err := db.Exec("CREATE TRIGGER tr1 BEFORE INSERT ON isu_condition FOR EACH ROW INSERT INTO `latest_isu_level` VALUES (NEW.jia_isu_uuid, NEW.level) ON DUPLICATE KEY UPDATE latest_isu_level.level = NEW.level"); err != nil {
-		c.Logger().Errorf("db error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+	//
+	//db.Exec("DROP TRIGGER tr1")
+	//if _, err := db.Exec("CREATE TRIGGER tr1 BEFORE INSERT ON isu_condition FOR EACH ROW INSERT INTO `latest_isu_level` VALUES (NEW.jia_isu_uuid, NEW.level) ON DUPLICATE KEY UPDATE latest_isu_level.level = NEW.level"); err != nil {
+	//	c.Logger().Errorf("db error : %v", err)
+	//	return c.NoContent(http.StatusInternalServerError)
+	//}
 
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
@@ -1317,6 +1317,21 @@ func loopPostIsuCondition() {
 		if err != nil {
 			log.Println(err)
 		}
+
+		bulkInsertLatestIsuLevels(isuConditions)
+	}
+}
+
+func bulkInsertLatestIsuLevels(isuConditions []*IsuCondition) {
+	latestIsuLevels := make([]LatestIsuLevel, 0, len(isuConditions))
+	for _, v := range isuConditions {
+		latestIsuLevels = append(latestIsuLevels, LatestIsuLevel{
+			JIAIsuUUID: v.JIAIsuUUID,
+			Level:      v.Level,
+		})
+	}
+	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` VALUES (:jia_isu_uuid, :level) ON DUPLICATE KEY UPDATE level=VALUES(level)", isuConditions); err != nil {
+		log.Println(err)
 	}
 }
 
