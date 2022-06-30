@@ -78,6 +78,12 @@ var (
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
 )
 
+type LatestIsuLevel struct {
+	JIAIsuUUID string    `db:"jia_isu_uuid"`
+	Timestamp  time.Time `db:"timestamp"`
+	Level      string    `db:"level"`
+}
+
 type Config struct {
 	Name string `db:"name"`
 	URL  string `db:"url"`
@@ -92,6 +98,9 @@ type Isu struct {
 	JIAUserID  string    `db:"jia_user_id" json:"-"`
 	CreatedAt  time.Time `db:"created_at" json:"-"`
 	UpdatedAt  time.Time `db:"updated_at" json:"-"`
+
+	Level     string    `db:"level" json:"-"`
+	Timestamp time.Time `db:"timestamp" json:"-"`
 }
 
 type IsuFromJIA struct {
@@ -368,6 +377,33 @@ func postInitialize(c echo.Context) error {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	latestIsuConditions := []IsuCondition{}
+	if err := db.Select(&latestIsuConditions, "select * from isu_condition a JOIN (select jia_isu_uuid, MAX(`timestamp`) AS `timestamp` FROM isu_condition GROUP BY jia_isu_uuid) b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.timestamp = b.timestamp"); err != nil {
+		c.Logger().Errorf("db error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	args := make([]interface{}, 0, len(latestIsuConditions)*3)
+	placeHolders := &strings.Builder{}
+	for i, v := range latestIsuConditions {
+		args = append(args, v.JIAIsuUUID, v.Timestamp, v.Level)
+		if i == 0 {
+			placeHolders.WriteString(" (?, ?, ?)")
+		} else {
+			placeHolders.WriteString(",(?, ?, ?)")
+		}
+	}
+	if _, err = db.Exec("INSERT INTO latest_isu_level (`jia_isu_uuid`, `timestamp`,`level`) VALUES"+placeHolders.String(), args...); err != nil {
+		c.Logger().Errorf("db error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	//
+	//db.Exec("DROP TRIGGER tr1")
+	//if _, err := db.Exec("CREATE TRIGGER tr1 BEFORE INSERT ON isu_condition FOR EACH ROW INSERT INTO `latest_isu_level` VALUES (NEW.jia_isu_uuid, NEW.level) ON DUPLICATE KEY UPDATE latest_isu_level.level = NEW.level"); err != nil {
+	//	c.Logger().Errorf("db error : %v", err)
+	//	return c.NoContent(http.StatusInternalServerError)
+	//}
 
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
@@ -1083,20 +1119,20 @@ func calculateConditionLevel(condition string) (string, error) {
 func getTrend(c echo.Context) error {
 
 	v, err, _ := group.Do("trend", func() (interface{}, error) {
-		characterList := []Isu{}
-		err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
-		if err != nil {
-			c.Logger().Errorf("db error: %v", err)
-			return nil, err
+		characterList := []string{
+			"いじっぱり", "うっかりや", "おくびょう", "おだやか", "おっとり", "おとなしい",
+			"がんばりや", "きまぐれ", "さみしがり", "しんちょう", "すなお", "ずぶとい",
+			"せっかち", "てれや", "なまいき", "のうてんき", "のんき", "ひかえめ", "まじめ",
+			"むじゃき", "やんちゃ", "ゆうかん", "ようき", "れいせい", "わんぱく",
 		}
-
 		res := []TrendResponse{}
 
+		var err error
 		for _, character := range characterList {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
-				"SELECT * FROM `isu` WHERE `character` = ?",
-				character.Character,
+				"SELECT a.*, b.level, b.timestamp FROM `isu` a JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
+				character,
 			)
 			if err != nil {
 				c.Logger().Errorf("db error: %v", err)
@@ -1107,24 +1143,12 @@ func getTrend(c echo.Context) error {
 			characterWarningIsuConditions := []*TrendCondition{}
 			characterCriticalIsuConditions := []*TrendCondition{}
 			for _, isu := range isuList {
-				conditions := []IsuCondition{}
-				err = db.Select(&conditions,
-					"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1",
-					isu.JIAIsuUUID,
-				)
-				if err != nil {
-					c.Logger().Errorf("db error: %v", err)
-					return nil, err
-				}
-
-				if len(conditions) > 0 {
-					isuLastCondition := conditions[0]
-					conditionLevel := isuLastCondition.Level
+				if isu.Level != "" {
 					trendCondition := TrendCondition{
 						ID:        isu.ID,
-						Timestamp: isuLastCondition.Timestamp.Unix(),
+						Timestamp: isu.Timestamp.Unix(),
 					}
-					switch conditionLevel {
+					switch isu.Level {
 					case "info":
 						characterInfoIsuConditions = append(characterInfoIsuConditions, &trendCondition)
 					case "warning":
@@ -1147,7 +1171,7 @@ func getTrend(c echo.Context) error {
 			})
 			res = append(res,
 				TrendResponse{
-					Character: character.Character,
+					Character: character,
 					Info:      characterInfoIsuConditions,
 					Warning:   characterWarningIsuConditions,
 					Critical:  characterCriticalIsuConditions,
@@ -1285,6 +1309,22 @@ func loopPostIsuCondition() {
 		if err != nil {
 			log.Println(err)
 		}
+
+		bulkInsertLatestIsuLevels(isuConditions)
+	}
+}
+
+func bulkInsertLatestIsuLevels(isuConditions []*IsuCondition) {
+	latestIsuLevels := make([]LatestIsuLevel, 0, len(isuConditions))
+	for _, v := range isuConditions {
+		latestIsuLevels = append(latestIsuLevels, LatestIsuLevel{
+			JIAIsuUUID: v.JIAIsuUUID,
+			Timestamp:  v.Timestamp,
+			Level:      v.Level,
+		})
+	}
+	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` (`jia_isu_uuid`, `timestamp`, `level`) VALUES (:jia_isu_uuid, :timestamp, :level) ON DUPLICATE KEY UPDATE `timestamp`=VALUES(`timestamp`),level=VALUES(level)", latestIsuLevels); err != nil {
+		log.Println(err)
 	}
 }
 
