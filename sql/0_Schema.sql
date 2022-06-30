@@ -37,9 +37,8 @@ CREATE TABLE `isu_association_config` (
   `url` VARCHAR(255) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
-
 DROP TABLE IF EXISTS `latest_isu_level`;
 CREATE TABLE `latest_isu_level` (
     `jia_isu_uuid` VARCHAR(255) PRIMARY KEY,
-    `level` VARCHAR(255) NOT NULL,
+    `level` VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
