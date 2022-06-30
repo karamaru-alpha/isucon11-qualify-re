@@ -37,16 +37,9 @@ CREATE TABLE `isu_association_config` (
   `url` VARCHAR(255) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
-DROP TABLE IF EXISTS `latest_isu_condition`;
-CREATE TABLE `latest_isu_condition` (
-    `jia_isu_uuid` CHAR(36) NOT NULL,
-    `timestamp` DATETIME NOT NULL,
-    `is_sitting` TINYINT(1) NOT NULL,
-    `condition` VARCHAR(255) NOT NULL,
-    `message` VARCHAR(255) NOT NULL,
-    `created_at` DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
-PRIMARY KEY(`jia_isu_uuid`)
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
-CREATE TRIGGER latest_isu_condition_tr BEFORE INSERT ON `isu_condition` FOR EACH ROW INSERT INTO `latest_isu_condition` VALUES (NEW.jia_isu_uuid, NEW.timestamp, NEW.is_sitting, NEW.condition, NEW.message, NEW.created_at)
-ON DUPLICATE KEY UPDATE latest_isu_condition.timestamp = NEW.timestamp, latest_isu_condition.is_sitting = NEW.is_sitting, latest_isu_condition.condition = NEW.condition, latest_isu_condition.message = NEW.message, latest_isu_condition.created_at = NEW.created_at;
+DROP TABLE IF EXISTS `latest_isu_level`;
+CREATE TABLE `latest_isu_level` (
+    `jia_isu_uuid` VARCHAR(255) PRIMARY KEY,
+    `level` VARCHAR(255) NOT NULL,
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;

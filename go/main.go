@@ -78,6 +78,11 @@ var (
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
 )
 
+type LatestIsuLevel struct {
+	JIAIsuUUID string `db:"jia_isu_uuid"`
+	Level      string `db:"level"`
+}
+
 type Config struct {
 	Name string `db:"name"`
 	URL  string `db:"url"`
@@ -365,6 +370,27 @@ func postInitialize(c echo.Context) error {
 		request.JIAServiceURL,
 	)
 	if err != nil {
+		c.Logger().Errorf("db error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	latestIsuConditions := make([]*IsuCondition, 0, 80)
+	if err := db.Select(&latestIsuConditions, "select * from isu_condition a JOIN (select jia_isu_uuid, MAX(timestamp) AS latest FROM isu_condition GROUP BY jia_isu_uuid) b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.timestamp = b.latest"); err != nil {
+		c.Logger().Errorf("db error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	args := make([]interface{}, 0, len(latestIsuConditions)*2)
+	placeHolders := &strings.Builder{}
+	for i, v := range latestIsuConditions {
+		args = append(args, v.JIAIsuUUID, v.Level)
+		if i == 0 {
+			placeHolders.WriteString(" (?, ?)")
+		} else {
+			placeHolders.WriteString(",(?, ?)")
+		}
+	}
+	if _, err = db.Exec("INSERT INTO latest_isu_level (`jia_isu_uuid`, `level`) VALUES"+placeHolders.String(), args...); err != nil {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
