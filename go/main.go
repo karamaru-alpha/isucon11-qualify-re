@@ -1330,7 +1330,7 @@ func bulkInsertLatestIsuLevels(isuConditions []*IsuCondition) {
 			Level:      v.Level,
 		})
 	}
-	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` VALUES (:jia_isu_uuid, :level) ON DUPLICATE KEY UPDATE level=VALUES(level)", isuConditions); err != nil {
+	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` VALUES (:jia_isu_uuid, :level) ON DUPLICATE KEY UPDATE level=VALUES(level)", latestIsuLevels); err != nil {
 		log.Println(err)
 	}
 }
