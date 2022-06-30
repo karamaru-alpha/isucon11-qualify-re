@@ -374,7 +374,7 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	latestIsuConditions := make([]*IsuCondition, 0, 80)
+	latestIsuConditions := []IsuCondition{}
 	if err := db.Select(&latestIsuConditions, "select * from isu_condition a JOIN (select jia_isu_uuid, MAX(timestamp) AS latest FROM isu_condition GROUP BY jia_isu_uuid) b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.timestamp = b.latest"); err != nil {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
