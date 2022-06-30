@@ -100,7 +100,7 @@ type Isu struct {
 	UpdatedAt  time.Time `db:"updated_at" json:"-"`
 
 	Level     string    `db:"level" json:"-"`
-	Timestamp time.Time `db:"timestamp"`
+	Timestamp time.Time `db:"timestamp" json:"-"`
 }
 
 type IsuFromJIA struct {
