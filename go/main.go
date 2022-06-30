@@ -79,8 +79,9 @@ var (
 )
 
 type LatestIsuLevel struct {
-	JIAIsuUUID string `db:"jia_isu_uuid"`
-	Level      string `db:"level"`
+	JIAIsuUUID string    `db:"jia_isu_uuid"`
+	Timestamp  time.Time `db:"timestamp"`
+	Level      string    `db:"level"`
 }
 
 type Config struct {
@@ -97,6 +98,9 @@ type Isu struct {
 	JIAUserID  string    `db:"jia_user_id" json:"-"`
 	CreatedAt  time.Time `db:"created_at" json:"-"`
 	UpdatedAt  time.Time `db:"updated_at" json:"-"`
+
+	Level     string    `db:"level" json:"-"`
+	Timestamp time.Time `db:"timestamp"`
 }
 
 type IsuFromJIA struct {
@@ -380,17 +384,17 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	args := make([]interface{}, 0, len(latestIsuConditions)*2)
+	args := make([]interface{}, 0, len(latestIsuConditions)*3)
 	placeHolders := &strings.Builder{}
 	for i, v := range latestIsuConditions {
-		args = append(args, v.JIAIsuUUID, v.Level)
+		args = append(args, v.JIAIsuUUID, v.Timestamp, v.Level)
 		if i == 0 {
-			placeHolders.WriteString(" (?, ?)")
+			placeHolders.WriteString(" (?, ?, ?)")
 		} else {
-			placeHolders.WriteString(",(?, ?)")
+			placeHolders.WriteString(",(?, ?, ?)")
 		}
 	}
-	if _, err = db.Exec("INSERT INTO latest_isu_level (`jia_isu_uuid`, `level`) VALUES"+placeHolders.String(), args...); err != nil {
+	if _, err = db.Exec("INSERT INTO latest_isu_level (`jia_isu_uuid`, `timestamp`,`level`) VALUES"+placeHolders.String(), args...); err != nil {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1127,7 +1131,7 @@ func getTrend(c echo.Context) error {
 		for _, character := range characterList {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
-				"SELECT * FROM `isu` WHERE `character` = ?",
+				"SELECT a.*, b.level, b.timestamp FROM `isu` a LEFT JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
 				character,
 			)
 			if err != nil {
@@ -1139,24 +1143,12 @@ func getTrend(c echo.Context) error {
 			characterWarningIsuConditions := []*TrendCondition{}
 			characterCriticalIsuConditions := []*TrendCondition{}
 			for _, isu := range isuList {
-				conditions := []IsuCondition{}
-				err = db.Select(&conditions,
-					"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1",
-					isu.JIAIsuUUID,
-				)
-				if err != nil {
-					c.Logger().Errorf("db error: %v", err)
-					return nil, err
-				}
-
-				if len(conditions) > 0 {
-					isuLastCondition := conditions[0]
-					conditionLevel := isuLastCondition.Level
+				if isu.Level != "" {
 					trendCondition := TrendCondition{
 						ID:        isu.ID,
-						Timestamp: isuLastCondition.Timestamp.Unix(),
+						Timestamp: isu.Timestamp.Unix(),
 					}
-					switch conditionLevel {
+					switch isu.Level {
 					case "info":
 						characterInfoIsuConditions = append(characterInfoIsuConditions, &trendCondition)
 					case "warning":
@@ -1327,10 +1319,11 @@ func bulkInsertLatestIsuLevels(isuConditions []*IsuCondition) {
 	for _, v := range isuConditions {
 		latestIsuLevels = append(latestIsuLevels, LatestIsuLevel{
 			JIAIsuUUID: v.JIAIsuUUID,
+			Timestamp:  v.Timestamp,
 			Level:      v.Level,
 		})
 	}
-	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` (`jia_isu_uuid`, `level`) VALUES (:jia_isu_uuid, :level) ON DUPLICATE KEY UPDATE level=VALUES(level)", latestIsuLevels); err != nil {
+	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` (`jia_isu_uuid`, `timestamp`, `level`) VALUES (:jia_isu_uuid, :timestamp, :level) ON DUPLICATE KEY UPDATE `timestamp`=VALUES(`timestamp`),level=VALUES(level)", latestIsuLevels); err != nil {
 		panic(err)
 	}
 }
