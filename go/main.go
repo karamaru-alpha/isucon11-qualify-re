@@ -77,9 +77,12 @@ var (
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
 )
 
-type LatestIsuLevel struct {
+type LatestIsuCondition struct {
 	JIAIsuUUID string    `db:"jia_isu_uuid"`
 	Timestamp  time.Time `db:"timestamp"`
+	IsSitting  bool      `db:"is_sitting"`
+	Condition  string    `db:"condition"`
+	Message    string    `db:"message"`
 	Level      string    `db:"level"`
 }
 
@@ -384,17 +387,17 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	args := make([]interface{}, 0, len(latestIsuConditions)*3)
+	args := make([]interface{}, 0, len(latestIsuConditions)*6)
 	placeHolders := &strings.Builder{}
 	for i, v := range latestIsuConditions {
-		args = append(args, v.JIAIsuUUID, v.Timestamp, v.Level)
+		args = append(args, v.JIAIsuUUID, v.Timestamp, v.Level, v.IsSitting, v.Message, v.Condition)
 		if i == 0 {
-			placeHolders.WriteString(" (?, ?, ?)")
+			placeHolders.WriteString(" (?, ?, ?, ?, ?, ?)")
 		} else {
-			placeHolders.WriteString(",(?, ?, ?)")
+			placeHolders.WriteString(",(?, ?, ?, ?, ?, ?)")
 		}
 	}
-	if _, err = db.Exec("INSERT INTO latest_isu_level (`jia_isu_uuid`, `timestamp`,`level`) VALUES"+placeHolders.String(), args...); err != nil {
+	if _, err = db.Exec("INSERT INTO latest_isu_condition (`jia_isu_uuid`, `timestamp`,`level`, `is_sitting`, `message`, `condition`) VALUES"+placeHolders.String(), args...); err != nil {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1131,7 +1134,7 @@ func getTrend(c echo.Context) error {
 		for _, character := range characterList {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
-				"SELECT a.*, b.level, b.timestamp FROM `isu` a JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
+				"SELECT a.*, b.level, b.timestamp FROM `isu` a JOIN `latest_isu_condition` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
 				character,
 			)
 			if err != nil {
@@ -1302,15 +1305,18 @@ func loopPostIsuCondition() {
 }
 
 func bulkInsertLatestIsuLevels(isuConditions []*IsuCondition) {
-	latestIsuLevels := make([]LatestIsuLevel, 0, len(isuConditions))
+	latestIsuConditions := make([]LatestIsuCondition, 0, len(isuConditions))
 	for _, v := range isuConditions {
-		latestIsuLevels = append(latestIsuLevels, LatestIsuLevel{
+		latestIsuConditions = append(latestIsuConditions, LatestIsuCondition{
 			JIAIsuUUID: v.JIAIsuUUID,
 			Timestamp:  v.Timestamp,
+			IsSitting:  v.IsSitting,
+			Condition:  v.Condition,
+			Message:    v.Message,
 			Level:      v.Level,
 		})
 	}
-	if _, err := db.NamedExec("INSERT INTO `latest_isu_level` (`jia_isu_uuid`, `timestamp`, `level`) VALUES (:jia_isu_uuid, :timestamp, :level) ON DUPLICATE KEY UPDATE `timestamp`=VALUES(`timestamp`),level=VALUES(level)", latestIsuLevels); err != nil {
+	if _, err := db.NamedExec("INSERT INTO `latest_isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `level`) VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message :level) ON DUPLICATE KEY UPDATE `timestamp`=VALUES(`timestamp`),level=VALUES(level) `is_sitting`=VALUES(`is_sitting`), `condition`=VALUES(`condition`), `message`=VALUES(`message`), `level`=VALUES(`level`)", latestIsuConditions); err != nil {
 		log.Println(err)
 	}
 }
