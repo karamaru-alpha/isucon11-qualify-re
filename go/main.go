@@ -51,6 +51,8 @@ func (o *omIsuConditionListT) Set(v []*IsuCondition) {
 	o.M.Unlock()
 }
 
+var userIDs = map[string]*Isu{}
+
 type omIsuT struct {
 	M sync.RWMutex
 	V map[string]*Isu
@@ -286,6 +288,9 @@ func init() {
 }
 
 func main() {
+	http.DefaultTransport.(*http.Transport).MaxIdleConns = 0
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 1024
+	http.DefaultTransport.(*http.Transport).ForceAttemptHTTP2 = true
 	var err error
 	e := echo.New()
 	//e.Debug = true
