@@ -71,6 +71,26 @@ func (o *omIsuT) Set(v *Isu) {
 	o.M.Unlock()
 }
 
+type omIsu2T struct {
+	M sync.RWMutex
+	V map[string]*Isu
+}
+
+var omIsu2 omIsu2T
+
+func (o *omIsu2T) Get(jiaIsuUUID string) (*Isu, bool) {
+	o.M.RLock()
+	v, ok := o.V[jiaIsuUUID]
+	o.M.RUnlock()
+	return v, ok
+}
+
+func (o *omIsu2T) Set(v *Isu) {
+	o.M.Lock()
+	o.V[v.JIAIsuUUID] = v
+	o.M.Unlock()
+}
+
 const (
 	sessionName                 = "isucondition_go"
 	conditionLimit              = 20
@@ -333,8 +353,12 @@ func main() {
 	omIsu = omIsuT{
 		V: make(map[string]*Isu, 0),
 	}
+	omIsu2 = omIsu2T{
+		V: make(map[string]*Isu, 0),
+	}
 	for _, v := range isuList {
 		omIsu.Set(v)
+		omIsu2.Set(v)
 	}
 
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
@@ -746,6 +770,7 @@ func postIsu(c echo.Context) error {
 	}
 
 	omIsu.Set(&isu)
+	omIsu2.Set(&isu)
 
 	err = tx.Commit()
 	if err != nil {
@@ -1241,14 +1266,9 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "bad request body")
 	}
 
-	var count int
-	err = db.Get(&count, "SELECT 1 FROM `isu` WHERE `jia_isu_uuid` = ? LIMIT 1", jiaIsuUUID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.String(http.StatusNotFound, "not found: isu")
-		}
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+	_, ok := omIsu2.Get(jiaIsuUUID)
+	if !ok {
+		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
 	isuConditions := make([]*IsuCondition, 0, len(req))
