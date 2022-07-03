@@ -99,8 +99,7 @@ type Isu struct {
 	CreatedAt  time.Time `db:"created_at" json:"-"`
 	UpdatedAt  time.Time `db:"updated_at" json:"-"`
 
-	Level     string    `db:"level" json:"-"`
-	Timestamp time.Time `db:"timestamp" json:"-"`
+	isuCondition IsuCondition `db:"isu_condition" json:"-"`
 }
 
 type IsuFromJIA struct {
@@ -1131,7 +1130,7 @@ func getTrend(c echo.Context) error {
 		for _, character := range characterList {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
-				"SELECT a.*, b.level, b.timestamp FROM `isu` a JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
+				"SELECT a.*, b.level AS 'isu_condition.level', b.timestamp AS 'isu_condition.timestamp' FROM `isu` a JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
 				character,
 			)
 			if err != nil {
@@ -1143,12 +1142,12 @@ func getTrend(c echo.Context) error {
 			characterWarningIsuConditions := []*TrendCondition{}
 			characterCriticalIsuConditions := []*TrendCondition{}
 			for _, isu := range isuList {
-				if isu.Level != "" {
+				if isu.isuCondition.Level != "" {
 					trendCondition := TrendCondition{
 						ID:        isu.ID,
-						Timestamp: isu.Timestamp.Unix(),
+						Timestamp: isu.isuCondition.Timestamp.Unix(),
 					}
-					switch isu.Level {
+					switch isu.isuCondition.Level {
 					case "info":
 						characterInfoIsuConditions = append(characterInfoIsuConditions, &trendCondition)
 					case "warning":
