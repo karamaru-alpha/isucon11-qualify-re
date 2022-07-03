@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -1192,11 +1191,11 @@ func getTrend(c echo.Context) error {
 // ISUからのコンディションを受け取る
 func postIsuCondition(c echo.Context) error {
 	// TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
-	dropProbability := 0.9
-	if rand.Float64() <= dropProbability {
-		c.Logger().Warnf("drop post isu condition request")
-		return c.NoContent(http.StatusAccepted)
-	}
+	//dropProbability := 0.9
+	//if rand.Float64() <= dropProbability {
+	//	c.Logger().Warnf("drop post isu condition request")
+	//	return c.NoContent(http.StatusAccepted)
+	//}
 
 	jiaIsuUUID := c.Param("jia_isu_uuid")
 	if jiaIsuUUID == "" {
@@ -1211,15 +1210,8 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "bad request body")
 	}
 
-	tx, err := db.Beginx()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
 	var count int
-	err = tx.Get(&count, "SELECT 1 FROM `isu` WHERE `jia_isu_uuid` = ? LIMIT 1", jiaIsuUUID)
+	err = db.Get(&count, "SELECT 1 FROM `isu` WHERE `jia_isu_uuid` = ? LIMIT 1", jiaIsuUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.String(http.StatusNotFound, "not found: isu")
@@ -1281,17 +1273,11 @@ func postIsuCondition(c echo.Context) error {
 	//	return c.NoContent(http.StatusInternalServerError)
 	//}
 
-	err = tx.Commit()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
 	return c.NoContent(http.StatusAccepted)
 }
 
 func loopPostIsuCondition() {
-	for range time.Tick(time.Millisecond * 500) {
+	for range time.Tick(time.Millisecond * 100) {
 		isuConditions := omIsuConditionList.Get()
 		if len(isuConditions) == 0 {
 			continue
