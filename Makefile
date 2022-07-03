@@ -45,36 +45,35 @@ setup:
 	gh auth login
 # GitHub.com -> SSH -> /home/isucon/.ssh/id_rsa.pub -> Paste an authentication token -> https://github.com/settings/tokens
 
-.PHONY: before
-before:
+.PHONY: isu1
+isu1:
 	cd $(APP_PATH)
 	git checkout . && git clean -df .
 	git rev-parse --abbrev-ref HEAD | xargs echo "BRANCH:"
 	git rev-parse --abbrev-ref HEAD | xargs git pull origin
-	sudo cp my.cnf /etc/mysql/my.cnf
+	#sudo cp my.cnf /etc/mysql/my.cnf
 	sudo cp nginx.conf /etc/nginx/nginx.conf
 	sudo cp $(APP).conf /etc/nginx/sites-enabled/$(APP).conf
 	(cd $(GO_PATH) && go build -o $(APP))
 	sudo rm -f $(NGINX_LOG)
 	sudo rm -f $(NGINX_ERR)
-	sudo rm -f $(MYSQL_LOG)
-	sudo rm -f $(MYSQL_ERR)
+#	sudo rm -f $(MYSQL_LOG)
+#	sudo rm -f $(MYSQL_ERR)
 	sudo cp /dev/null $(GO_LOG)
 	sudo systemctl restart nginx
-	sudo systemctl restart mysql
+	#sudo systemctl restart mysql
 	sudo systemctl restart $(APP).go.service
 
-.PHONY: before-db
-before-db:
-	git stash
-	git pull origin main
+.PHONY: isu2
+isu2:
+	cd $(APP_PATH)
+	git checkout . && git clean -df .
+	git rev-parse --abbrev-ref HEAD | xargs echo "BRANCH:"
+	git rev-parse --abbrev-ref HEAD | xargs git pull origin
+	sudo rm -f $(MYSQL_LOG)
+	sudo rm -f $(MYSQL_ERR)
 	sudo cp my.cnf /etc/mysql/my.cnf
-	sudo rm $(MYSQL_LOG) 2> /dev/null
-	sudo touch $(MYSQL_LOG)
-	sudo chown -R mysql $(MYSQL_LOG)
 	sudo systemctl restart mysql
-	sudo systemctl stop nginx
-	sudo systemctl stop $(APP).go.service
 
 .PHONY: slow
 slow:
