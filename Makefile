@@ -72,6 +72,16 @@ isu2:
 	sudo cp my.cnf /etc/mysql/my.cnf
 	sudo systemctl restart mysql
 
+.PHONY: isu3
+isu3:
+	cd $(APP_PATH)
+	git checkout . && git clean -df .
+	git rev-parse --abbrev-ref HEAD | xargs echo "BRANCH:"
+	git rev-parse --abbrev-ref HEAD | xargs git pull origin
+	(cd $(GO_PATH) && go build -o $(APP))
+	sudo cp /dev/null $(GO_LOG)
+	sudo systemctl restart $(APP).go.service
+
 .PHONY: slow
 slow:
 	sudo $(APP_PATH)/slow.sh $(MYSQL_LOG)
