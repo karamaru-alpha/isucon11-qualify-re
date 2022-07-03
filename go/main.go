@@ -58,16 +58,16 @@ type omIsuT struct {
 
 var omIsu omIsuT
 
-func (o *omIsuT) Get(k string) (*Isu, bool) {
+func (o *omIsuT) Get(jiaIsuUUID, jiaUserID string) (*Isu, bool) {
 	o.M.RLock()
-	v, ok := o.V[k]
+	v, ok := o.V[fmt.Sprintf("%s-%s", jiaIsuUUID, jiaUserID)]
 	o.M.RUnlock()
 	return v, ok
 }
 
 func (o *omIsuT) Set(v *Isu) {
 	o.M.Lock()
-	o.V[v.JIAIsuUUID] = v
+	o.V[fmt.Sprintf("%s-%s", v.JIAIsuUUID, v.JIAUserID)] = v
 	o.M.Unlock()
 }
 
@@ -840,7 +840,7 @@ func getIsuGraph(c echo.Context) error {
 	}
 	date := time.Unix(datetimeInt64, 0).Truncate(time.Hour)
 
-	_, ok := omIsu.Get(jiaIsuUUID)
+	_, ok := omIsu.Get(jiaIsuUUID, jiaUserID)
 	if !ok {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
