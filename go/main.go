@@ -1130,7 +1130,7 @@ func getTrend(c echo.Context) error {
 		for _, character := range characterList {
 			isuList := []Isu{}
 			err = db.Select(&isuList,
-				"SELECT a.*, b.level AS 'isu_condition.level', b.timestamp AS 'isu_condition.timestamp' FROM `isu` a LEFT JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
+				"SELECT a.*, b.level AS 'isu_condition.level', b.timestamp AS 'isu_condition.timestamp' FROM `isu` a JOIN `latest_isu_level` b ON a.jia_isu_uuid = b.jia_isu_uuid WHERE a.`character` = ?",
 				character,
 			)
 			if err != nil {
