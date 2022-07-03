@@ -353,6 +353,9 @@ func main() {
 	omIsu = omIsuT{
 		V: make(map[string]*Isu, 0),
 	}
+	omIsu2 = omIsu2T{
+		V: make(map[string]*Isu, 0),
+	}
 	for _, v := range isuList {
 		omIsu.Set(v)
 		omIsu2.Set(v)
@@ -1267,7 +1270,7 @@ func postIsuCondition(c echo.Context) error {
 	if !ok {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
-	
+
 	isuConditions := make([]*IsuCondition, 0, len(req))
 
 	for _, cond := range req {
