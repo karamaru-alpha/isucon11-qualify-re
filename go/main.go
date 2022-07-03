@@ -51,6 +51,26 @@ func (o *omIsuConditionListT) Set(v []*IsuCondition) {
 	o.M.Unlock()
 }
 
+type omIsuT struct {
+	M sync.RWMutex
+	V map[string]*Isu
+}
+
+var omIsu omIsuT
+
+func (o *omIsuT) Get(jiaIsuUUID, jiaUserID string) (*Isu, bool) {
+	o.M.RLock()
+	v, ok := o.V[fmt.Sprintf("%s-%s", jiaIsuUUID, jiaUserID)]
+	o.M.RUnlock()
+	return v, ok
+}
+
+func (o *omIsuT) Set(v *Isu) {
+	o.M.Lock()
+	o.V[fmt.Sprintf("%s-%s", v.JIAIsuUUID, v.JIAUserID)] = v
+	o.M.Unlock()
+}
+
 const (
 	sessionName                 = "isucondition_go"
 	conditionLimit              = 20
@@ -303,6 +323,19 @@ func main() {
 
 	omIsuConditionList.V = []*IsuCondition{}
 	go loopPostIsuCondition()
+
+	isuList := make([]*Isu, 0)
+	if err := db.Select(&isuList, "SELECT * FROM isu"); err != nil {
+		log.Println(err)
+		return
+	}
+
+	omIsu = omIsuT{
+		V: make(map[string]*Isu, 0),
+	}
+	for _, v := range isuList {
+		omIsu.Set(v)
+	}
 
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
@@ -712,6 +745,8 @@ func postIsu(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	omIsu.Set(&isu)
+
 	err = tx.Commit()
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
@@ -805,15 +840,9 @@ func getIsuGraph(c echo.Context) error {
 	}
 	date := time.Unix(datetimeInt64, 0).Truncate(time.Hour)
 
-	var count int
-	err = db.Get(&count, "SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ? LIMIT 1",
-		jiaUserID, jiaIsuUUID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.String(http.StatusNotFound, "not found: isu")
-		}
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+	_, ok := omIsu.Get(jiaIsuUUID, jiaUserID)
+	if !ok {
+		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
 	res, err := generateIsuGraphResponse(db, jiaIsuUUID, date)
@@ -1031,19 +1060,12 @@ func getIsuConditions(c echo.Context) error {
 		startTime = time.Unix(startTimeInt64, 0)
 	}
 
-	var isuName string
-	err = db.Get(&isuName,
-		"SELECT name FROM `isu` WHERE `jia_isu_uuid` = ? AND `jia_user_id` = ?",
-		jiaIsuUUID, jiaUserID,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.String(http.StatusNotFound, "not found: isu")
-		}
-
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+	isu, ok := omIsu.Get(jiaIsuUUID, jiaUserID)
+	if !ok {
+		return c.String(http.StatusNotFound, "not found: isu")
 	}
+
+	isuName := isu.Name
 
 	conditionsResponse, err := getIsuConditionsFromDB(db, jiaIsuUUID, endTime, conditionLevel, startTime, conditionLimit, isuName)
 	if err != nil {
