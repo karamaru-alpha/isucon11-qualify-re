@@ -1277,7 +1277,7 @@ func postIsuCondition(c echo.Context) error {
 }
 
 func loopPostIsuCondition() {
-	for range time.Tick(time.Millisecond * 500) {
+	for range time.Tick(time.Millisecond * 250) {
 		isuConditions := omIsuConditionList.Get()
 		if len(isuConditions) == 0 {
 			continue
