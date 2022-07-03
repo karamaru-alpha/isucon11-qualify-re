@@ -1322,7 +1322,7 @@ func bulkInsertLatestIsuLevels(isuConditions []*IsuCondition) {
 			Level:      v.Level,
 		})
 	}
-	if _, err := db.NamedExec("INSERT INTO `latest_isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `level`) VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message :level) ON DUPLICATE KEY UPDATE `timestamp`=VALUES(`timestamp`),level=VALUES(level) `is_sitting`=VALUES(`is_sitting`), `condition`=VALUES(`condition`), `message`=VALUES(`message`), `level`=VALUES(`level`)", latestIsuConditions); err != nil {
+	if _, err := db.NamedExec("INSERT INTO `latest_isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `level`) VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message :level) ON DUPLICATE KEY UPDATE `timestamp`=VALUES(`timestamp`), `is_sitting`=VALUES(`is_sitting`), `condition`=VALUES(`condition`), `message`=VALUES(`message`), `level`=VALUES(`level`)", latestIsuConditions); err != nil {
 		log.Println(err)
 	}
 }
