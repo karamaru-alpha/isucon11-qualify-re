@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -410,7 +409,11 @@ func main() {
 	}
 
 	if os.Getenv("ISU") == "1" {
-		syscall.Umask(0777)
+		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
+		err = os.Chmod("/var/run/", 0777)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
 		socketFile := "/var/run/app.sock"
 		os.Remove(socketFile)
 
