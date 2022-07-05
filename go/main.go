@@ -410,7 +410,6 @@ func main() {
 
 	if os.Getenv("ISU") == "1" {
 		socketFile := "/var/run/app.sock"
-		os.Remove(socketFile)
 
 		l, err := net.Listen("unix", socketFile)
 		if err != nil {
