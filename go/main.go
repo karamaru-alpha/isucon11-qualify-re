@@ -409,7 +409,7 @@ func main() {
 	}
 
 	if os.Getenv("ISU") == "1" {
-		socketFile := "/home/isucon/webapp/tmp/app.sock"
+		socketFile := "/var/run/app.sock"
 
 		l, err := net.Listen("unix", socketFile)
 		if err != nil {
