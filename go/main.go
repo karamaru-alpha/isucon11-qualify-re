@@ -331,7 +331,7 @@ func main() {
 	defer logfile.Close()
 	log.SetOutput(logfile)
 	e.Logger.SetOutput(logfile)
-	log.Print("initialize!!!!")
+	log.Print("main")
 
 	//e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -411,15 +411,14 @@ func main() {
 	if os.Getenv("ISU") == "1" {
 		socketFile := "/var/run/app.sock"
 
-		l, err := net.Listen("unix", socketFile)
-		if err != nil {
-			e.Logger.Fatal(err)
-		}
-
 		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
 		err = os.Chmod(socketFile, 0777)
 		if err != nil {
-			panic(err)
+			e.Logger.Fatal(err)
+		}
+		
+		l, err := net.Listen("unix", socketFile)
+		if err != nil {
 			e.Logger.Fatal(err)
 		}
 
