@@ -419,6 +419,7 @@ func main() {
 		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
 		err = os.Chmod(socketFile, 0777)
 		if err != nil {
+			panic(err)
 			e.Logger.Fatal(err)
 		}
 
