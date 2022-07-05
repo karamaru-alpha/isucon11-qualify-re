@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -388,8 +389,27 @@ func main() {
 		omIsu2.Set(v)
 	}
 
-	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
-	e.Logger.Fatal(e.Start(serverPort))
+	if os.Getenv("ISU") == "1" {
+		socketFile := "/var/run/app.sock"
+		os.Remove(socketFile)
+
+		l, err := net.Listen("unix", socketFile)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+
+		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
+		err = os.Chmod(socketFile, 0777)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+
+		e.Listener = l
+		e.Logger.Fatal(e.Start(""))
+	} else {
+		serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
+		e.Logger.Fatal(e.Start(serverPort))
+	}
 }
 
 func getSession(r *http.Request) (*sessions.Session, error) {
