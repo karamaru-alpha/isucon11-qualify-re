@@ -109,6 +109,7 @@ const (
 
 var (
 	db                  *sqlx.DB
+	db2                 *sqlx.DB
 	sessionStore        sessions.Store
 	mySQLConnectionData *MySQLConnectionEnv
 
@@ -170,6 +171,7 @@ type IsuCondition struct {
 
 type MySQLConnectionEnv struct {
 	Host     string
+	Host2    string
 	Port     string
 	User     string
 	DBName   string
@@ -258,8 +260,8 @@ func getEnv(key string, defaultValue string) string {
 
 func NewMySQLConnectionEnv() *MySQLConnectionEnv {
 	return &MySQLConnectionEnv{
-		//Host:     getEnv("MYSQL_HOST", "127.0.0.1"),
-		Host:     "172.31.32.112",
+		Host:     getEnv("MYSQL_HOST", "127.0.0.1"),
+		Host2:    getEnv("MYSQL_HOST2", "127.0.0.1"),
 		Port:     getEnv("MYSQL_PORT", "3306"),
 		User:     getEnv("MYSQL_USER", "isucon"),
 		DBName:   getEnv("MYSQL_DBNAME", "isucondition"),
@@ -267,9 +269,20 @@ func NewMySQLConnectionEnv() *MySQLConnectionEnv {
 	}
 }
 
-func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
-	dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?parseTime=true&loc=Asia%%2FTokyo&interpolateParams=true", mc.User, mc.Password, mc.Host, mc.Port, mc.DBName)
-	return sqlx.Open("mysql", dsn)
+func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, *sqlx.DB, error) {
+	dsn2 := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?parseTime=true&loc=Asia%%2FTokyo&interpolateParams=true", mc.User, mc.Password, mc.Host, mc.Port, mc.DBName)
+	isu2, err := sqlx.Open("mysql", dsn2)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	dsn3 := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?parseTime=true&loc=Asia%%2FTokyo&interpolateParams=true", mc.User, mc.Password, mc.Host2, mc.Port, mc.DBName)
+	isu3, err := sqlx.Open("mysql", dsn3)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return isu2, isu3, nil
 }
 
 func init() {
@@ -327,13 +340,27 @@ func main() {
 
 	mySQLConnectionData = NewMySQLConnectionEnv()
 
-	db, err = mySQLConnectionData.ConnectDB()
+	db, db2, err = mySQLConnectionData.ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("failed to connect db: %v", err)
 		return
 	}
 	db.SetMaxOpenConns(10)
 	defer db.Close()
+	db2.SetMaxOpenConns(10)
+	defer db2.Close()
+	for {
+		if err := db.Ping(); err == nil {
+			break
+		}
+		time.Sleep(time.Second * 1)
+	}
+	for {
+		if err := db2.Ping(); err == nil {
+			break
+		}
+		time.Sleep(time.Second * 1)
+	}
 
 	postIsuConditionTargetBaseURL = os.Getenv("POST_ISUCONDITION_TARGET_BASE_URL")
 	if postIsuConditionTargetBaseURL == "" {
@@ -870,7 +897,7 @@ func getIsuGraph(c echo.Context) error {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
-	res, err := generateIsuGraphResponse(db, jiaIsuUUID, date)
+	res, err := generateIsuGraphResponse(db2, jiaIsuUUID, date)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1130,7 +1157,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	if err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
-	if err := db.Select(&conditions, db.Rebind(query), params...); err != nil {
+	if err := db2.Select(&conditions, db.Rebind(query), params...); err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
 
@@ -1343,7 +1370,7 @@ func loopPostIsuCondition() {
 				placeHolders.WriteString(",(?, ?, ?, ?, ?, ?)")
 			}
 		}
-		_, err := db.Exec("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `level`) VALUES"+placeHolders.String(), args...)
+		_, err := db2.Exec("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `level`) VALUES"+placeHolders.String(), args...)
 		if err != nil {
 			log.Println(err)
 		}

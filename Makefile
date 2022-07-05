@@ -78,9 +78,10 @@ isu3:
 	git checkout . && git clean -df .
 	git rev-parse --abbrev-ref HEAD | xargs echo "BRANCH:"
 	git rev-parse --abbrev-ref HEAD | xargs git pull origin
-	(cd $(GO_PATH) && go build -o $(APP))
-	sudo cp /dev/null $(GO_LOG)
-	sudo systemctl restart $(APP).go.service
+	sudo rm -f $(MYSQL_LOG)
+	sudo rm -f $(MYSQL_ERR)
+	sudo cp my.cnf /etc/mysql/my.cnf
+	sudo systemctl restart mysql
 
 .PHONY: slow
 slow:
