@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -409,6 +410,7 @@ func main() {
 	}
 
 	if os.Getenv("ISU") == "1" {
+		syscall.Umask(0777)
 		socketFile := "/var/run/app.sock"
 		os.Remove(socketFile)
 
