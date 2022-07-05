@@ -412,13 +412,13 @@ func main() {
 		socketFile := "/tmp/go.sock"
 		os.Remove(socketFile)
 
-		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
-		err = os.Chmod(socketFile, 0777)
+		l, err := net.Listen("unix", socketFile)
 		if err != nil {
 			e.Logger.Fatal(err)
 		}
 
-		l, err := net.Listen("unix", socketFile)
+		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
+		err = os.Chmod(socketFile, 0777)
 		if err != nil {
 			e.Logger.Fatal(err)
 		}
