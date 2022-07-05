@@ -409,9 +409,9 @@ func main() {
 	}
 
 	if os.Getenv("ISU") == "1" {
-		socketFile := "/var/run/app.sock"
+		socketFile := "/tmp/go.sock"
 		os.Remove(socketFile)
-		
+
 		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
 		err = os.Chmod(socketFile, 0777)
 		if err != nil {
