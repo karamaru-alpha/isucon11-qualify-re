@@ -410,14 +410,21 @@ func main() {
 
 	if os.Getenv("ISU") == "1" {
 		socketFile := "/var/run/app.sock"
-
+		os.Remove(socketFile)
+		
 		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
 		err = os.Chmod(socketFile, 0777)
 		if err != nil {
 			e.Logger.Fatal(err)
 		}
-		
+
 		l, err := net.Listen("unix", socketFile)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+
+		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
+		err = os.Chmod(socketFile, 0777)
 		if err != nil {
 			e.Logger.Fatal(err)
 		}
