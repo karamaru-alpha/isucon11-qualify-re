@@ -423,18 +423,6 @@ func main() {
 			e.Logger.Fatal(err)
 		}
 
-		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
-		err = os.Chmod(socketFile, 0777)
-		if err != nil {
-			e.Logger.Fatal(err)
-		}
-
-		// go runユーザとnginxのユーザ（グループ）を同じにすれば777じゃなくてok
-		err = os.Chmod(socketFile, 0777)
-		if err != nil {
-			e.Logger.Fatal(err)
-		}
-
 		e.Listener = l
 		e.Logger.Fatal(e.Start(""))
 	} else {
